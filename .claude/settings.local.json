@@ -10,7 +10,8 @@
       "Bash(declare:*)",
       "Bash(ccswitch list:*)",
       "Bash(ccswitch switch:*)",
-      "Bash(gtimeout:*)"
+      "Bash(gtimeout:*)",
+      "Bash(make:*)"
     ],
     "deny": []
   }

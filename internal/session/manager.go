@@ -183,3 +183,50 @@ func (m *Manager) GetSessionPath(sessionName string) string {
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, ".ccswitch", "worktrees", m.repoName, sessionName)
 }
+
+// CommitAndRebaseSession commits changes in a session and rebases to current branch
+func (m *Manager) CommitAndRebaseSession(sessionPath, commitMessage string) error {
+	// 1. Check for changes in the session
+	commitManager := git.NewCommitManager(sessionPath)
+	if !commitManager.HasChanges() {
+		return fmt.Errorf("no changes to commit in session")
+	}
+
+	// 2. Stage all changes
+	if err := commitManager.StageAll(); err != nil {
+		return fmt.Errorf("failed to stage changes: %w", err)
+	}
+
+	// 3. Commit changes
+	if err := commitManager.Commit(commitMessage); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+
+	// 4. Get the commit hash
+	commitHash, err := commitManager.GetLastCommitHash()
+	if err != nil {
+		return fmt.Errorf("failed to get commit hash: %w", err)
+	}
+
+	// 5. Rebase to current branch (from main repo path)
+	rebaseManager := git.NewRebaseManager(m.repoPath)
+	success, hasConflict, err := rebaseManager.RebaseCommit(commitHash)
+
+	if err != nil {
+		if hasConflict {
+			return fmt.Errorf("rebase aborted due to conflicts: %w", err)
+		}
+		return err
+	}
+
+	if !success {
+		return fmt.Errorf("rebase failed")
+	}
+
+	return nil
+}
+
+// GetCurrentBranch returns the current branch of the main repo
+func (m *Manager) GetCurrentBranch() (string, error) {
+	return m.branchManager.GetCurrent()
+}
