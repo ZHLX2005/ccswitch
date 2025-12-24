@@ -117,22 +117,34 @@ func rebaseSession(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Get commit message
 	displayName := getWorktreeDisplayName(*targetWorktree, currentDir)
 	ui.Infof("Rebasing %s onto %s", displayName, currentBranch)
 	fmt.Println()
 
-	commitMessage := promptForCommitMessage()
-	if commitMessage == "" {
-		ui.Error("✗ Commit message cannot be empty")
-		return
-	}
+	// Check if worktree has uncommitted changes
+	hasChanges := git.HasUncommittedChanges(targetWorktree.Path)
 
-	// Perform commit and rebase
-	ui.Info("Committing changes...")
-	if err := manager.CommitAndRebaseSession(targetWorktree.Path, commitMessage); err != nil {
-		ui.Errorf("✗ Failed: %v", err)
-		return
+	if hasChanges {
+		// Has uncommitted changes - need to commit first
+		commitMessage := promptForCommitMessage()
+		if commitMessage == "" {
+			ui.Error("✗ Commit message cannot be empty")
+			return
+		}
+
+		// Perform commit and rebase
+		ui.Info("Committing changes...")
+		if err := manager.CommitAndRebaseSession(targetWorktree.Path, commitMessage); err != nil {
+			ui.Errorf("✗ Failed: %v", err)
+			return
+		}
+	} else {
+		// No uncommitted changes - just rebase existing commits
+		ui.Info("No uncommitted changes, rebasing existing commits...")
+		if err := manager.RebaseSession(targetWorktree.Path); err != nil {
+			ui.Errorf("✗ Failed: %v", err)
+			return
+		}
 	}
 
 	ui.Successf("✓ Successfully rebased %s onto %s", displayName, currentBranch)

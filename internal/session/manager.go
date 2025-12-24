@@ -226,6 +226,32 @@ func (m *Manager) CommitAndRebaseSession(sessionPath, commitMessage string) erro
 	return nil
 }
 
+// RebaseSession rebases a worktree's branch onto the current branch without committing
+func (m *Manager) RebaseSession(worktreePath string) error {
+	// Get the current branch name from the worktree
+	worktreeBranch, err := git.GetCurrentBranch(worktreePath)
+	if err != nil {
+		return fmt.Errorf("failed to get worktree branch: %w", err)
+	}
+
+	// Rebase the worktree branch onto current branch using rebase manager
+	rebaseManager := git.NewRebaseManager(m.repoPath)
+	success, hasConflict, err := rebaseManager.RebaseCommit(worktreeBranch)
+
+	if err != nil {
+		if hasConflict {
+			return fmt.Errorf("rebase aborted due to conflicts: %w", err)
+		}
+		return err
+	}
+
+	if !success {
+		return fmt.Errorf("rebase failed")
+	}
+
+	return nil
+}
+
 // GetCurrentBranch returns the current branch of the main repo
 func (m *Manager) GetCurrentBranch() (string, error) {
 	return m.branchManager.GetCurrent()
