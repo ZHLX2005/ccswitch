@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/ksred/ccswitch/internal/git"
 	"github.com/ksred/ccswitch/internal/session"
 	"github.com/ksred/ccswitch/internal/ui"
@@ -154,14 +155,42 @@ func selectWorktreeForRebase(worktrees []git.Worktree, currentDir string) *git.W
 		return nil
 	}
 
+	// Get current branch for comparison
+	currentBranch, _ := git.GetCurrentBranch(currentDir)
+
+	// Color definitions
+	yellow := color.New(color.FgYellow, color.Bold)
+	green := color.New(color.FgGreen)
+	gray := color.New(color.FgHiBlack)
+
 	// Show numbered list
 	ui.Title("Select worktree to rebase:")
 	fmt.Println()
 
 	for i, wt := range availableWorktrees {
 		name := getWorktreeDisplayName(wt, currentDir)
-		ui.Infof("  %d. %s (%s)", i+1, name, wt.Branch)
-		ui.Infof("     Path: %s", wt.Path)
+
+		// Determine status and color
+		var statusColor *color.Color
+		var statusIcon string
+
+		if git.HasUncommittedChanges(wt.Path) {
+			// Has uncommitted changes - Yellow
+			statusColor = yellow
+			statusIcon = "●"
+		} else if diff, err := git.GetCommitCountDifference(wt.Path, currentBranch); err == nil && diff > 0 {
+			// Ahead of current branch - Green
+			statusColor = green
+			statusIcon = "↑"
+		} else {
+			// Behind or same - Gray/Default
+			statusColor = gray
+			statusIcon = "○"
+		}
+
+		// Print with status color
+		statusColor.Printf("  %d. %s %s (%s)\n", i+1, statusIcon, name, wt.Branch)
+		fmt.Printf("     Path: %s\n", wt.Path)
 	}
 
 	fmt.Println()
