@@ -9,6 +9,7 @@ import (
 
 	"github.com/ksred/ccswitch/internal/config"
 	"github.com/ksred/ccswitch/internal/errors"
+	"github.com/ksred/ccswitch/internal/git"
 	"github.com/ksred/ccswitch/internal/session"
 	"github.com/ksred/ccswitch/internal/ui"
 	"github.com/ksred/ccswitch/internal/utils"
@@ -24,11 +25,45 @@ func newCreateCmd() *cobra.Command {
 }
 
 func createSession(cmd *cobra.Command, args []string) {
+	scanner := bufio.NewScanner(os.Stdin)
+
 	// Get current directory
 	currentDir, err := os.Getwd()
 	if err != nil {
 		ui.Error("✗ Failed to get current directory")
 		return
+	}
+
+	// Check if we're in a git repository root
+	mainRepoPath, err := git.GetMainRepoPath(currentDir)
+	if err != nil {
+		ui.Errorf("✗ Failed to get git repository: %v", err)
+		return
+	}
+
+	// Check if current directory is the git root
+	if currentDir != mainRepoPath {
+		// We're in a subdirectory
+		ui.Warningf("You are currently in a subdirectory of the git repository")
+		ui.Infof("Current directory: %s", currentDir)
+		ui.Infof("Git root: %s", mainRepoPath)
+		fmt.Println()
+
+		// Ask user if they want to continue
+		fmt.Print("Do you want to create a session from this subdirectory? (yes/no): ")
+
+		if !scanner.Scan() {
+			ui.Info("Session creation cancelled")
+			return
+		}
+
+		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if answer != "yes" && answer != "y" {
+			ui.Info("Session creation cancelled")
+			ui.Info("Tip: Navigate to the git repository root first:")
+			fmt.Printf("  cd %s\n", mainRepoPath)
+			return
+		}
 	}
 
 	// Create session manager
@@ -37,7 +72,6 @@ func createSession(cmd *cobra.Command, args []string) {
 	// Get description from user
 	fmt.Print(ui.TitleStyle.Render("🚀 What are you working on? "))
 
-	scanner := bufio.NewScanner(os.Stdin)
 	if !scanner.Scan() {
 		return
 	}
@@ -71,7 +105,7 @@ func createSession(cmd *cobra.Command, args []string) {
 	sessionName := utils.Slugify(description)
 	cfg, _ := config.Load()
 	branchName := cfg.Branch.Prefix + sessionName
-	repoName := filepath.Base(currentDir)
+	repoName := filepath.Base(mainRepoPath)
 
 	// Get the full worktree path
 	homeDir, _ := os.UserHomeDir()
