@@ -42,7 +42,11 @@ func createSession(cmd *cobra.Command, args []string) {
 	}
 
 	// Check if current directory is the git root
-	if currentDir != mainRepoPath {
+	// Normalize paths for comparison (handle Windows path separators)
+	currentDirNormalized := filepath.Clean(currentDir)
+	mainRepoPathNormalized := filepath.Clean(mainRepoPath)
+
+	if currentDirNormalized != mainRepoPathNormalized {
 		// We're in a subdirectory
 		ui.Warningf("You are currently in a subdirectory of the git repository")
 		ui.Infof("Current directory: %s", currentDir)
