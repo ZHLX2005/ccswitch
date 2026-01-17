@@ -11,7 +11,9 @@
       "Bash(ccswitch list:*)",
       "Bash(ccswitch switch:*)",
       "Bash(gtimeout:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(go clean:*)",
+      "Bash(go mod tidy:*)"
     ],
     "deny": []
   }
