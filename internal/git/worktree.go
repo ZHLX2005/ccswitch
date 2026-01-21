@@ -104,9 +104,11 @@ func GetSessionsFromWorktrees(worktrees []Worktree, repoName string) []SessionIn
 	// The pattern should match worktrees that belong to this repository
 	for _, wt := range worktrees {
 		// Check if it's a ccswitch worktree and extract the repo name from path
-		if strings.Contains(wt.Path, ".ccswitch/worktrees/") && wt.Branch != "" {
-			// Extract repo name from path to ensure we only show worktrees for current repo
-			parts := strings.Split(wt.Path, string(filepath.Separator))
+		// Use both / and \ for cross-platform compatibility
+		if (strings.Contains(wt.Path, ".ccswitch/worktrees/") || strings.Contains(wt.Path, ".ccswitch\\worktrees\\")) && wt.Branch != "" {
+			// Normalize path separators to / for consistent parsing
+			normalizedPath := strings.ReplaceAll(wt.Path, "\\", "/")
+			parts := strings.Split(normalizedPath, "/")
 			for i, part := range parts {
 				if part == ".ccswitch" && i+2 < len(parts) && parts[i+1] == "worktrees" {
 					if i+2 < len(parts) && parts[i+2] == repoName {
